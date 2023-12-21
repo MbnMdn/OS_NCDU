@@ -32,8 +32,48 @@ int getNumOfDirectories(char *input) {
         }
     }
     printf("Directories: %d\nFiles: %d\n", dirCount, fileCount);
+    return dirCount;
+}
+
+
+
+char* getLargestDirectory(char *input){
+    int fileCount = 0;
+    int dirCount = 0;
+    long max=0;
+    WIN32_FIND_DATA file;
+    HANDLE fHandle;
+
+
+    fHandle = FindFirstFile(input, &file);
+    if (fHandle == INVALID_HANDLE_VALUE) {
+        printf("Invalid File Handle.\n");
+        return 0;
+    }
+
+    while (FindNextFile(fHandle, &file) != 0) {
+        if(file.nFileSizeLow>max){
+            max=file.nFileSizeLow;
+        }
+        if (strcmp(file.cFileName, "..") == 0) continue;
+        switch (file.dwFileAttributes) {
+            case 16:
+                dirCount++;
+                break;
+            case 32:
+                fileCount++;
+                break;
+            default:
+                break;
+        }
+    }
+
+
+    printf("max: %ld\n", max);
+
 
 }
+
 
 char* parser(const char* s, const char* oldW,
                   const char* newW)
@@ -81,7 +121,9 @@ int main(int argc, char *argv[]) {
         char* parsed_input = parser(argv[1],  "\\",  "\\\\");
 
         char* result = strncat(parsed_input,&star,1);
-        getNumOfDirectories(result);
+//        getNumOfDirectories(result);
+        getLargestDirectory(result);
+
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
     } else {
