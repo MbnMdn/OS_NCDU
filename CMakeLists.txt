@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.27)
+project(OS_NCDU C)
+
+set(CMAKE_C_STANDARD 11)
+
+add_executable(OS_NCDU
+        main.c)
