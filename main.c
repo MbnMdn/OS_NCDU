@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <stdlib.h>
 
-int getNumOfDirectories(char *argv[]) {
+int getNumOfDirectories(char *input) {
 
     int fileCount = 0;
     int dirCount = 0;
@@ -12,7 +12,7 @@ int getNumOfDirectories(char *argv[]) {
     HANDLE fHandle;
 
 
-    fHandle = FindFirstFile(argv[1], &file);
+    fHandle = FindFirstFile(input, &file);
     if (fHandle == INVALID_HANDLE_VALUE) {
         printf("Invalid File Handle.\n");
         return 0;
@@ -68,25 +68,24 @@ char* parser(const char* s, const char* oldW,
         else
             result[i++] = *s++;
     }
-    char star = '*';
-    strncat(result,&star,i++);
-    result[i] = '\0';
+
+    result[i++] = '\0';
     return result;
 }
 
 
 int main(int argc, char *argv[]) {
     if (argc == 2) {
+        char star = '*';
 
-        getNumOfDirectories(argv);
+        char* parsed_input = parser(argv[1],  "\\",  "\\\\");
+
+        char* result = strncat(parsed_input,&star,1);
+        getNumOfDirectories(result);
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
     } else {
         printf("One argument expected.\n");
     }
-
-    printf("%s", parser("D:\\h\\j",  "\\",  "\\\\"));
-
-
 }
 
