@@ -2,6 +2,7 @@
 #include <string.h>
 #include <windows.h>
 #include <stdlib.h>
+#include "utilities.h"
 
 int getNumOfDirectories(char *input) {
 
@@ -35,25 +36,42 @@ int getNumOfDirectories(char *input) {
     return dirCount;
 }
 
-
-
-char* getLargestDirectory(char *input){
+void getLargestDirectory(char input[], char dir_path[], struct iFile *maxFile, struct iFile *minFile) {
     int fileCount = 0;
     int dirCount = 0;
-    long max=0;
+    unsigned long max = 0;
+    unsigned long long min = ULONG_LONG_MAX;
     WIN32_FIND_DATA file;
     HANDLE fHandle;
+    minFile->valid = 0;
+    maxFile->valid = 0;
 
 
     fHandle = FindFirstFile(input, &file);
     if (fHandle == INVALID_HANDLE_VALUE) {
         printf("Invalid File Handle.\n");
-        return 0;
+        return;
     }
 
     while (FindNextFile(fHandle, &file) != 0) {
-        if(file.nFileSizeLow>max){
-            max=file.nFileSizeLow;
+        if (file.nFileSizeLow > max) {
+            maxFile->valid=1;
+            max = file.nFileSizeLow;
+            strcpy(maxFile->name, file.cFileName);
+            strcpy(maxFile->extension, get_extension(file.cFileName));
+            strcpy(maxFile->path, dir_path);
+            strcat(maxFile->path, file.cFileName);
+        }
+
+        if (file.dwFileAttributes == 32) {
+            if (file.nFileSizeLow < min) {
+                minFile->valid=1;
+                min = file.nFileSizeLow;
+                strcpy(minFile->name, file.cFileName);
+                strcpy(minFile->extension, get_extension(file.cFileName));
+                strcpy(minFile->path, dir_path);
+                strcat(minFile->path, file.cFileName);
+            }
         }
         if (strcmp(file.cFileName, "..") == 0) continue;
         switch (file.dwFileAttributes) {
@@ -67,50 +85,10 @@ char* getLargestDirectory(char *input){
                 break;
         }
     }
+    maxFile->valid = 1;
+    maxFile->size = max;
 
 
-    printf("max: %ld\n", max);
-
-
-}
-
-
-char* parser(const char* s, const char* oldW,
-                  const char* newW)
-{
-    char* result;
-    int i, cnt = 0;
-    int newWlen = strlen(newW);
-    int oldWlen = strlen(oldW);
-
-    // Counting the number of times old word
-    // occur in the string
-    for (i = 0; s[i] != '\0'; i++) {
-        if (strstr(&s[i], oldW) == &s[i]) {
-            cnt++;
-
-            // Jumping to index after the old word.
-            i += oldWlen - 1;
-        }
-    }
-
-    // Making new string of enough length
-    result = (char*)malloc(i + cnt * (newWlen - oldWlen) + 1);
-
-    i = 0;
-    while (*s) {
-        // compare the substring with the result
-        if (strstr(s, oldW) == s) {
-            strcpy(&result[i], newW);
-            i += newWlen;
-            s += oldWlen;
-        }
-        else
-            result[i++] = *s++;
-    }
-
-    result[i++] = '\0';
-    return result;
 }
 
 
@@ -118,11 +96,17 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
         char star = '*';
 
-        char* parsed_input = parser(argv[1],  "\\",  "\\\\");
+        char *parsed_input = parser(argv[1], "\\", "\\\\");
 
-        char* result = strncat(parsed_input,&star,1);
+        char *result = strncat(parsed_input, &star, 1);
 //        getNumOfDirectories(result);
-        getLargestDirectory(result);
+        struct iFile maxFile;
+        struct iFile minFile;
+        getLargestDirectory(result, argv[1], &maxFile, &minFile);
+        printf("min file path: %s\n", minFile.path);
+        printf("min file size: %lu\n", minFile.size);
+        printf("min file name: %s\n", minFile.name);
+        printf("min file type: %s\n", minFile.extension);
 
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
