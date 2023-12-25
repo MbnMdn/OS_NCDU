@@ -93,24 +93,24 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
 
         initDirectoryTask(&task, argv[1]);
-        printf("%llu\n", task.dirSize);
+//        printf("%llu\n", task.dirSize);
 //        printf("%s\n", task.minSize.name);
 //        getNumOfDirectories(argv[1], &fileCount, &dirCount);
 //        getSizes(argv[1], &maxFile, &minFile, &folderSize);
 //        getExtensionCount(argv[1], &arraylist);
 
-        for (int i = 0; i < task.extensionsCount; ++i) {
-//            printf("%s %d\n", task.extensions[i].extension, task.extensions[i].count);
-//            pid_t pid;
-//            pid = fork();
-//            if (pid == 0) {
-//                printf("Child\n");
-//            } else if (pid > 0) {
-//                printf("Parent\n");
-//                wait(&pid);
-//            } else {
-//                printf("Error\n");
-//            }
+        for (int i = 0; i < task.directoryCount; ++i) {
+            pid_t pid;
+            pid = fork();
+            if (pid == 0) {
+                printf("Child %d\n", i);
+                exit(0);
+            } else if (pid > 0) {
+                printf("Parent\n");
+                wait(&pid);
+            } else {
+                printf("Error\n");
+            }
         }
 
 
