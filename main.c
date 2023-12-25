@@ -3,126 +3,123 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <limits.h>
 #include "utilities.h"
 #include "arraylist.h"
 
-int getNumOfDirectories(char *input) {
+void initDirectoryTask(struct task *task, char input[]) {
+    DIR *dirp;
+    struct dirent *direntp;
 
-    DIR* dirp;
-    struct dirent* direntp;
+    unsigned long max = 0;
+    unsigned long long min = ULONG_LONG_MAX;
 
-    dirp = opendir( input );
-    if( dirp == NULL ) {
-        perror( "can't open /home/fred" );
+    unsigned long long folderSize = 0;
+
+    dirp = opendir(input);
+    if (dirp == NULL) {
+        perror("Invalid File Handle.\\n");
     } else {
-        for(;;) {
-            direntp = readdir( dirp );
-            if( direntp == NULL ) break;
+        for (;;) {
+            direntp = readdir(dirp);
+            if (direntp == NULL) break;
 
-            printf( "%hhu\n", direntp->d_type );
+            if (strcmp(direntp->d_name, ".") == 0 || strcmp(direntp->d_name, "..") == 0 ||
+                strcmp(direntp->d_name, ".DS_Store") == 0)
+                continue;
+
+            // Directory
+            if (direntp->d_type == 4) {
+                char filepath[1000];
+                sprintf(filepath, "%s%s/", input, direntp->d_name);
+
+                struct iDirectory directory;
+                directory.valid = 1;
+                strcpy(directory.name, direntp->d_name);
+                strcpy(directory.path, filepath);
+
+                appendToDirectoryArray(task, directory);
+            }
+                // File
+            else if (direntp->d_type == 8) {
+                char filepath[1000];
+                sprintf(filepath, "%s%s", input, direntp->d_name);
+
+                struct iFile file;
+                file.valid = 1;
+                strcpy(file.name, direntp->d_name);
+                strcpy(file.path, filepath);
+                strcpy(file.extension, get_extension(direntp->d_name));
+
+                long int fileSize = findSize(filepath);
+
+                file.size = fileSize;
+                folderSize = folderSize + fileSize;
+
+                appendToFileArray(task, file);
+
+                if (fileSize > max) {
+                    task->maxSize = file;
+                    max = fileSize;
+                }
+
+                if (fileSize < min) {
+                    task->minSize = file;
+                    min = fileSize;
+                }
+
+                task->dirSize = folderSize;
+
+                char *extension = get_extension(direntp->d_name);
+                extensionTypes(extension, task);
+
+
+            }
         }
 
-        closedir( dirp );
+        closedir(dirp);
     }
-
-    return EXIT_SUCCESS;
 }
-
-//void getLargestDirectory(char input[], char dir_path[], struct iFile *maxFile, struct iFile *minFile) {
-//    int fileCount = 0;
-//    int dirCount = 0;
-//    unsigned long max = 0;
-//    unsigned long long min = ULONG_LONG_MAX;
-//    WIN32_FIND_DATA file;
-//    HANDLE fHandle;
-//    minFile->valid = 0;
-//    maxFile->valid = 0;
-//
-//
-//    fHandle = FindFirstFile(input, &file);
-//    if (fHandle == INVALID_HANDLE_VALUE) {
-//        printf("Invalid File Handle.\n");
-//        return;
-//    }
-//
-//    while (FindNextFile(fHandle, &file) != 0) {
-//        if (file.nFileSizeLow > max) {
-//            maxFile->valid = 1;
-//            max = file.nFileSizeLow;
-//            strcpy(maxFile->name, file.cFileName);
-//            strcpy(maxFile->extension, get_extension(file.cFileName));
-//            strcpy(maxFile->path, dir_path);
-//            strcat(maxFile->path, file.cFileName);
-//        }
-//
-//        if (file.dwFileAttributes == 32) {
-//            if (file.nFileSizeLow < min) {
-//                minFile->valid = 1;
-//                min = file.nFileSizeLow;
-//                strcpy(minFile->name, file.cFileName);
-//                strcpy(minFile->extension, get_extension(file.cFileName));
-//                strcpy(minFile->path, dir_path);
-//                strcat(minFile->path, file.cFileName);
-//            }
-//        }
-//        if (strcmp(file.cFileName, "..") == 0) continue;
-//        switch (file.dwFileAttributes) {
-//            case 16:
-//                dirCount++;
-//                break;
-//            case 32:
-//                fileCount++;
-//                break;
-//            default:
-//                break;
-//        }
-//    }
-//    maxFile->valid = 1;
-//    maxFile->size = max;
-//
-//
-//}
-
-//void getExtensionCount(char input[], struct arraylist *array) {
-//
-//    WIN32_FIND_DATA file;
-//    HANDLE fHandle;
-//
-//
-//    fHandle = FindFirstFile(input, &file);
-//    if (fHandle == INVALID_HANDLE_VALUE) {
-//        printf("Invalid File Handle.\n");
-//        return;
-//    }
-//
-//    while (FindNextFile(fHandle, &file) != 0) {
-//        if (file.dwFileAttributes == 32) {
-//            char *extension = get_extension(file.cFileName);
-//            extensionTypes(extension, array);
-//        }
-//    }
-//}
 
 
 int main(int argc, char *argv[]) {
-    struct arraylist arraylist;
+    struct task task;
+    struct iFile maxFile;
+    struct iFile minFile;
+    long int folderSize = 0;
+    int fileCount = 0;
+    int dirCount = 0;
+
     if (argc == 2) {
 
-        getNumOfDirectories(argv[1]);
+        initDirectoryTask(&task, argv[1]);
+        printf("%llu\n", task.dirSize);
+//        printf("%s\n", task.minSize.name);
+//        getNumOfDirectories(argv[1], &fileCount, &dirCount);
+//        getSizes(argv[1], &maxFile, &minFile, &folderSize);
+//        getExtensionCount(argv[1], &arraylist);
 
+        for (int i = 0; i < task.extensionsCount; ++i) {
+//            printf("%s %d\n", task.extensions[i].extension, task.extensions[i].count);
+//            pid_t pid;
+//            pid = fork();
+//            if (pid == 0) {
+//                printf("Child\n");
+//            } else if (pid > 0) {
+//                printf("Parent\n");
+//                wait(&pid);
+//            } else {
+//                printf("Error\n");
+//            }
+        }
 
-        struct iFile maxFile;
-        struct iFile minFile;
-//        getLargestDirectory(result, argv[1], &maxFile, &minFile);
-//        getExtensionCount(result, &arraylist);
-//        for (int i = 0; i < arraylist.size; ++i) {
-//            printf("extension %s count %d\n", arraylist.extensions[i].extension, arraylist.extensions[i].count);
-//        }
 
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
     } else {
         printf("One argument expected.\n");
     }
+
+
 }
 

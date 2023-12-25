@@ -9,11 +9,32 @@ struct iFile{
     char path[1000];
 };
 
+struct iDirectory{
+    int valid;
+    char name[255];
+    char path[1000];
+};
+
 struct extensionCount {
     char extension[10];
     int count;
 };
 
+
+long int findSize(char file_name[])
+{
+    FILE* fp = fopen(file_name, "r");
+    if (fp == NULL) {
+        printf("File Not Found!\n");
+        return -1;
+    }
+
+    fseek(fp, 0L, SEEK_END);
+    long int res = ftell(fp);
+    fclose(fp);
+
+    return res;
+}
 char *get_extension(const char* fileName){
     char *dot = strrchr(fileName,'.');
     if(!dot || dot == fileName) return "";
