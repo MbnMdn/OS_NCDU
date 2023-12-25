@@ -2,7 +2,9 @@
 #include <string.h>
 #include <windows.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "utilities.h"
+#include "arraylist.h"
 
 int getNumOfDirectories(char *input) {
 
@@ -55,7 +57,7 @@ void getLargestDirectory(char input[], char dir_path[], struct iFile *maxFile, s
 
     while (FindNextFile(fHandle, &file) != 0) {
         if (file.nFileSizeLow > max) {
-            maxFile->valid=1;
+            maxFile->valid = 1;
             max = file.nFileSizeLow;
             strcpy(maxFile->name, file.cFileName);
             strcpy(maxFile->extension, get_extension(file.cFileName));
@@ -65,7 +67,7 @@ void getLargestDirectory(char input[], char dir_path[], struct iFile *maxFile, s
 
         if (file.dwFileAttributes == 32) {
             if (file.nFileSizeLow < min) {
-                minFile->valid=1;
+                minFile->valid = 1;
                 min = file.nFileSizeLow;
                 strcpy(minFile->name, file.cFileName);
                 strcpy(minFile->extension, get_extension(file.cFileName));
@@ -91,8 +93,29 @@ void getLargestDirectory(char input[], char dir_path[], struct iFile *maxFile, s
 
 }
 
+void getExtensionCount(char input[], struct arraylist *array) {
+
+    WIN32_FIND_DATA file;
+    HANDLE fHandle;
+
+
+    fHandle = FindFirstFile(input, &file);
+    if (fHandle == INVALID_HANDLE_VALUE) {
+        printf("Invalid File Handle.\n");
+        return;
+    }
+
+    while (FindNextFile(fHandle, &file) != 0) {
+        if (file.dwFileAttributes == 32) {
+            char *extension = get_extension(file.cFileName);
+            extensionTypes(extension, array);
+        }
+    }
+}
+
 
 int main(int argc, char *argv[]) {
+    struct arraylist arraylist;
     if (argc == 2) {
         char star = '*';
 
@@ -100,13 +123,15 @@ int main(int argc, char *argv[]) {
 
         char *result = strncat(parsed_input, &star, 1);
 //        getNumOfDirectories(result);
+
+
         struct iFile maxFile;
         struct iFile minFile;
-        getLargestDirectory(result, argv[1], &maxFile, &minFile);
-        printf("min file path: %s\n", minFile.path);
-        printf("min file size: %lu\n", minFile.size);
-        printf("min file name: %s\n", minFile.name);
-        printf("min file type: %s\n", minFile.extension);
+//        getLargestDirectory(result, argv[1], &maxFile, &minFile);
+        getExtensionCount(result, &arraylist);
+        for (int i = 0; i < arraylist.size; ++i) {
+            printf("extension %s count %d\n", arraylist.extensions[i].extension, arraylist.extensions[i].count);
+        }
 
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");

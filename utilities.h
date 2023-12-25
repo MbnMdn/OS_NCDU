@@ -9,8 +9,13 @@ struct iFile{
     char path[1000];
 };
 
-const char *get_extension(const char* fileName){
-    const char *dot = strrchr(fileName,'.');
+struct extensionCount {
+    char extension[10];
+    int count;
+};
+
+char *get_extension(const char* fileName){
+    char *dot = strrchr(fileName,'.');
     if(!dot || dot == fileName) return "";
     return dot + 1 ;
 }
