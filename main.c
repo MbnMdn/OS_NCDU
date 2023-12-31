@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <limits.h>
+#include <sys/wait.h>
+#include <sys/mman.h>
 #include "utilities.h"
 #include "arraylist.h"
 
@@ -76,43 +78,54 @@ void initDirectoryTask(struct task *task, char input[]) {
 
             }
         }
-
         closedir(dirp);
     }
 }
 
 
 int main(int argc, char *argv[]) {
-    struct task task;
-    struct iFile maxFile;
-    struct iFile minFile;
-    long int folderSize = 0;
-    int fileCount = 0;
-    int dirCount = 0;
-
+    struct task *task = (struct task *) mmap(NULL, sizeof(struct task), PROT_READ | PROT_WRITE,
+                                             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (argc == 2) {
 
-        initDirectoryTask(&task, argv[1]);
-//        printf("%llu\n", task.dirSize);
-//        printf("%s\n", task.minSize.name);
-//        getNumOfDirectories(argv[1], &fileCount, &dirCount);
-//        getSizes(argv[1], &maxFile, &minFile, &folderSize);
-//        getExtensionCount(argv[1], &arraylist);
+        initDirectoryTask(task, argv[1]);
 
-        for (int i = 0; i < task.directoryCount; ++i) {
+        for (int i = 0; i < task->directoryCount; ++i) {
+            int pipefd[2];
+            int returnstatus = pipe(pipefd);
+
+            if (returnstatus == -1) {
+                printf("Pipe cannot be created\n");
+                return 1;
+            }
+
             pid_t pid;
             pid = fork();
             if (pid == 0) {
-                printf("Child %d\n", i);
+//                printf("Child %d\n", i);
+                struct task childTask;
+                initDirectoryTask(&childTask, task->directory[i].path);
+
+                if (childTask.maxSize.size > task->maxSize.size){
+                    task->maxSize = childTask.maxSize;
+                }
+
+                if (childTask.minSize.size < task->minSize.size){
+                    task->minSize = childTask.minSize;
+                }
+
+
                 exit(0);
             } else if (pid > 0) {
-                printf("Parent\n");
+//                printf("Parent\n");
                 wait(&pid);
             } else {
                 printf("Error\n");
             }
         }
 
+        printf("max : %s\n" , task->maxSize.name);
+        printf("min : %s" , task->minSize.name);
 
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
