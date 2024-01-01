@@ -14,7 +14,7 @@ void initDirectoryTask(struct task *task, char input[]) {
     struct dirent *direntp;
 
     unsigned long max = 0;
-    unsigned long long min = ULONG_LONG_MAX;
+    unsigned long long min = ULLONG_MAX;
 
     unsigned long long folderSize = 0;
 
@@ -58,24 +58,26 @@ void initDirectoryTask(struct task *task, char input[]) {
                 file.size = fileSize;
                 folderSize = folderSize + fileSize;
 
+
                 appendToFileArray(task, file);
-
-                if (fileSize > max) {
-                    task->maxSize = file;
-                    max = fileSize;
-                }
-
-                if (fileSize < min) {
-                    task->minSize = file;
-                    min = fileSize;
-                }
 
                 task->dirSize = folderSize;
 
                 char *extension = get_extension(direntp->d_name);
                 extensionTypes(extension, task);
+            }
+        }
 
 
+        for (int i = 0; i < task->filesCount; i++) {
+            if (task->files[i].size > max) {
+                task->maxSize = task->files[i];
+                max = task->files[i].size;
+            }
+
+            if (task->files[i].size < min) {
+                task->minSize = task->files[i];
+                min = task->files[i].size;
             }
         }
         closedir(dirp);
@@ -106,13 +108,15 @@ int main(int argc, char *argv[]) {
                 struct task childTask;
                 initDirectoryTask(&childTask, task->directory[i].path);
 
-                if (childTask.maxSize.size > task->maxSize.size){
-                    task->maxSize = childTask.maxSize;
-                }
+                if (childTask.maxSize.size != 0 && strlen(childTask.maxSize.name) != 0)
+                    if (childTask.maxSize.size > task->maxSize.size) {
+                        task->maxSize = childTask.maxSize;
+                    }
 
-                if (childTask.minSize.size < task->minSize.size){
-                    task->minSize = childTask.minSize;
-                }
+                if(childTask.minSize.size != 0 && strlen(childTask.minSize.name) != 0)
+                    if (childTask.minSize.size < task->minSize.size) {
+                        task->minSize = childTask.minSize;
+                    }
 
 
                 exit(0);
@@ -124,8 +128,8 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        printf("max : %s\n" , task->maxSize.name);
-        printf("min : %s" , task->minSize.name);
+        printf("max : %s %lu\n", task->maxSize.name, task->maxSize.size);
+        printf("min : %s %lu", task->minSize.name, task->minSize.size);
 
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
