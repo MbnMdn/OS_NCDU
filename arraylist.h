@@ -5,16 +5,16 @@ struct task {
     unsigned long long dirSize;
     struct iFile maxSize;
     struct iFile minSize;
-    struct iFile files[1000];
-    struct iDirectory directory[1000];
-    struct extensionCount extensions[1000];
+    struct iFile files[10];
+    struct iDirectory directory[10];
+    struct extensionCount extensions[10];
 };
 
 
 struct thread_arg{
     struct task* task;
-    struct task* threadTask;
-    char path[1000];
+//    struct task* threadTask;
+    char path[100];
 };
 
 void appendToExtensionArray(struct task *array, struct extensionCount extension) {
