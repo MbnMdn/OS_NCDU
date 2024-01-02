@@ -10,6 +10,13 @@ struct task {
     struct extensionCount extensions[1000];
 };
 
+
+struct thread_arg{
+    struct task* task;
+    struct task* threadTask;
+    char path[1000];
+};
+
 void appendToExtensionArray(struct task *array, struct extensionCount extension) {
     array->extensions[array->extensionsCount] = extension;
     array->extensionsCount++;

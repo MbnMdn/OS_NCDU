@@ -21,6 +21,8 @@ struct extensionCount {
 };
 
 
+
+
 long int findSize(char file_name[])
 {
     FILE* fp = fopen(file_name, "r");

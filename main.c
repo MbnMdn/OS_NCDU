@@ -6,6 +6,8 @@
 #include <limits.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
+#include <pthread.h>
+
 #include "utilities.h"
 #include "arraylist.h"
 
@@ -84,6 +86,19 @@ void initDirectoryTask(struct task *task, char input[]) {
     }
 }
 
+void *threadFunction(void *arg) {
+    struct thread_arg *argument = (struct thread_arg *) arg;
+
+    if (argument->task->directoryCount == 0) return NULL;
+
+    initDirectoryTask(argument->threadTask, argument->path);
+
+    if (argument->task->maxSize.size < argument->threadTask->maxSize.size) {
+        argument->task->maxSize = argument->threadTask->maxSize;
+    }
+
+
+}
 
 int main(int argc, char *argv[]) {
     struct task *task = (struct task *) mmap(NULL, sizeof(struct task), PROT_READ | PROT_WRITE,
@@ -101,6 +116,20 @@ int main(int argc, char *argv[]) {
                 struct task childTask;
                 initDirectoryTask(&childTask, task->directory[i].path);
 
+                if (childTask.directoryCount != 0) {
+                    pthread_t tid[childTask.directoryCount];
+                    for (int j = 0; j < childTask.directoryCount; j++) {
+                        struct thread_arg threadArg;
+                        struct task threadTask;
+                        strcpy(threadArg.path, childTask.directory[j].path);
+                        threadArg.task = &childTask;
+                        threadArg.threadTask = &threadTask;
+                        pthread_create(&tid[j], NULL, threadFunction, (void *) &threadArg);
+                    }
+                    for (int j = 0; j < childTask.directoryCount; j++) {
+                        pthread_join(tid[j], NULL);
+                    }
+                }
                 if (childTask.filesCount != 0) {
                     if (childTask.maxSize.size > task->maxSize.size) {
                         task->maxSize = childTask.maxSize;
@@ -116,15 +145,15 @@ int main(int argc, char *argv[]) {
 
                     task->dirSize += childTask.dirSize;
                 }
-
                 exit(0);
             } else if (pid > 0) {
 //                printf("Parent\n");
-                wait(&pid);
             } else {
                 printf("Error\n");
             }
         }
+
+        while (wait(NULL) != -1);
 
         printf("max file : %s %lu\n", task->maxSize.name, task->maxSize.size);
         printf("min file : %s %lu\n", task->minSize.name, task->minSize.size);
@@ -132,6 +161,7 @@ int main(int argc, char *argv[]) {
             printf(".%s - %d\n", task->extensions[i].extension, task->extensions[i].count);
         }
         printf("directory size : %llu", task->dirSize);
+
 
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
