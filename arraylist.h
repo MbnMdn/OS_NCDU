@@ -26,6 +26,7 @@ void appendToDirectoryArray(struct task *array, struct iDirectory newDirectory) 
 }
 
 void extensionTypes(char extensionName[], struct task *array) {
+
     int flag = 0;
     for (int i = 0; i < array->extensionsCount; i++) {
         if (strcmp(array->extensions[i].extension, extensionName) == 0) {
@@ -39,5 +40,19 @@ void extensionTypes(char extensionName[], struct task *array) {
         if(ex.count > 1)
             ex.count = ex.count + 1;
         appendToExtensionArray(array, ex);
+    }
+}
+
+void extensionTypesWithCount(struct extensionCount extension, struct task *array) {
+
+    int flag = 0;
+    for (int i = 0; i < array->extensionsCount; i++) {
+        if (strcmp(array->extensions[i].extension, extension.extension) == 0) {
+            array->extensions[i].count += extension.count;
+            flag = 1;
+        }
+    }
+    if(flag == 0){
+        appendToExtensionArray(array, extension);
     }
 }

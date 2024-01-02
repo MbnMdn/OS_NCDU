@@ -93,13 +93,6 @@ int main(int argc, char *argv[]) {
         initDirectoryTask(task, argv[1]);
 
         for (int i = 0; i < task->directoryCount; ++i) {
-            int pipefd[2];
-            int returnstatus = pipe(pipefd);
-
-            if (returnstatus == -1) {
-                printf("Pipe cannot be created\n");
-                return 1;
-            }
 
             pid_t pid;
             pid = fork();
@@ -108,16 +101,21 @@ int main(int argc, char *argv[]) {
                 struct task childTask;
                 initDirectoryTask(&childTask, task->directory[i].path);
 
-                if (childTask.maxSize.size != 0 && strlen(childTask.maxSize.name) != 0)
+                if (childTask.filesCount != 0) {
                     if (childTask.maxSize.size > task->maxSize.size) {
                         task->maxSize = childTask.maxSize;
                     }
 
-                if(childTask.minSize.size != 0 && strlen(childTask.minSize.name) != 0)
                     if (childTask.minSize.size < task->minSize.size) {
                         task->minSize = childTask.minSize;
                     }
 
+                    for (int j = 0; j < childTask.extensionsCount; ++j) {
+                        extensionTypesWithCount(childTask.extensions[j], task);
+                    }
+
+                    task->dirSize += childTask.dirSize;
+                }
 
                 exit(0);
             } else if (pid > 0) {
@@ -128,8 +126,12 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        printf("max : %s %lu\n", task->maxSize.name, task->maxSize.size);
-        printf("min : %s %lu", task->minSize.name, task->minSize.size);
+        printf("max file : %s %lu\n", task->maxSize.name, task->maxSize.size);
+        printf("min file : %s %lu\n", task->minSize.name, task->minSize.size);
+        for (int i = 0; i < task->extensionsCount; ++i) {
+            printf(".%s - %d\n", task->extensions[i].extension, task->extensions[i].count);
+        }
+        printf("directory size : %llu", task->dirSize);
 
     } else if (argc > 2) {
         printf("Too many arguments supplied.\n");
