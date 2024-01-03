@@ -13,8 +13,8 @@ struct task {
 
 struct thread_arg{
     struct task* task;
-//    struct task* threadTask;
-    char path[100];
+    struct task* threadTask;
+    char* path;
 };
 
 void appendToExtensionArray(struct task *array, struct extensionCount extension) {

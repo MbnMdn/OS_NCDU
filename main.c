@@ -87,48 +87,63 @@ void initDirectoryTask(struct task *task, char input[]) {
     }
 }
 
+pthread_mutex_t lock;
+
 void *threadFunction(void *arg) {
-    struct thread_arg *argument = (struct thread_arg *) arg;
-//    initDirectoryTask(argument->threadTask, argument->path);
+    struct thread_arg *argument;
+//    sleep(1);
+    argument = (struct thread_arg *) arg;
 
-//    if (argument->threadTask->directoryCount == 0) return NULL;
-    printf("%s\n", argument->path);
 
-//    if (argument->threadTask->filesCount != 0) {
-//        if (argument->threadTask->maxSize.size > argument->task->maxSize.size) {
-//            argument->task->maxSize = argument->threadTask->maxSize;
-//        }
-//
-//        if (argument->threadTask->minSize.size < argument->task->minSize.size) {
-//            argument->task->minSize = argument->threadTask->minSize;
-//        }
-//
-//        for (int j = 0; j < argument->threadTask->extensionsCount; ++j) {
-//            extensionTypesWithCount(argument->threadTask->extensions[j], argument->task);
-//        }
-//
-//        argument->task->dirSize += argument->threadTask->dirSize;
-//    }
-//    pthread_t tid[argument->threadTask->directoryCount];
+    initDirectoryTask(argument->threadTask, argument->path);
+//    printf("path : %s\n", argument->path);
 
-//    for (int i = 0; i < argument->threadTask->directoryCount; ++i) {
-//        struct thread_arg threadArg;
-//        struct task threadTask;
-//        strcpy(threadArg.path, argument->threadTask->directory[i].path);
-//        threadArg.task = argument->threadTask;
-//        threadArg.threadTask = &threadTask;
-//        printf("%s\n", threadArg.path);
-//        pthread_create(&tid[i], NULL, threadFunction, (void *) &threadArg);
-//    }
-//
-//    for (int j = 0; j < argument->threadTask->directoryCount; j++) {
-//        pthread_join(tid[j], NULL);
-//    }
+    if (argument->threadTask->directoryCount == 0) return NULL;
+
+    pthread_t tid[argument->threadTask->directoryCount];
+    struct thread_arg threadArguments[argument->threadTask->directoryCount];
+    struct task threadTasks[argument->threadTask->directoryCount];
+
+    for (int i = 0; i < argument->threadTask->directoryCount; ++i) {
+        threadArguments[i].path = argument->threadTask->directory[i].path;
+        threadArguments[i].task = argument->threadTask;
+        threadArguments[i].threadTask = &threadTasks[i];
+        pthread_create(&tid[i], NULL, threadFunction, &threadArguments[i]);
+    }
+
+    for (int j = 0; j < argument->threadTask->directoryCount; j++) {
+        pthread_join(tid[j], NULL);
+    }
+
+    pthread_mutex_lock(&lock);
+    if (argument->threadTask->filesCount != 0) {
+        if (argument->threadTask->maxSize.size > argument->task->maxSize.size) {
+            argument->task->maxSize = argument->threadTask->maxSize;
+        }
+
+        if (argument->threadTask->minSize.size < argument->task->minSize.size) {
+            argument->task->minSize = argument->threadTask->minSize;
+        }
+
+        for (int j = 0; j < argument->threadTask->extensionsCount; ++j) {
+            extensionTypesWithCount(argument->threadTask->extensions[j], argument->task);
+        }
+
+        argument->task->dirSize += argument->threadTask->dirSize;
+    }
+    pthread_mutex_unlock(&lock);
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {
     struct task *task = (struct task *) mmap(NULL, sizeof(struct task), PROT_READ | PROT_WRITE,
                                              MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return 1;
+    }
+
     if (argc == 2) {
 
         initDirectoryTask(task, argv[1]);
@@ -144,19 +159,20 @@ int main(int argc, char *argv[]) {
 
                 if (childTask.directoryCount != 0) {
                     pthread_t tid[childTask.directoryCount];
+                    struct thread_arg threadArguments[childTask.directoryCount];
+                    struct task threadTasks[childTask.directoryCount];
                     for (int j = 0; j < childTask.directoryCount; j++) {
-                        struct thread_arg threadArg;
-//                        struct task threadTask;
-                        strcpy(threadArg.path, childTask.directory[j].path);
-                        threadArg.task = &childTask;
-//                        threadArg.threadTask = &threadTask;
-//                        printf("%s\n",childTask.directory[j].path);
-                        pthread_create(&tid[j], NULL, threadFunction, &threadArg);
+                        threadArguments[j].path = childTask.directory[j].path;
+                        threadArguments[j].task = &childTask;
+                        threadArguments[j].threadTask = &threadTasks[j];
+                        pthread_create(&tid[j], NULL, threadFunction, (void*) &threadArguments[j]);
                     }
                     for (int j = 0; j < childTask.directoryCount; j++) {
                         pthread_join(tid[j], NULL);
                     }
+
                 }
+                printf("Child %d maxFile = %s\n", i, childTask.maxSize.name);
                 if (childTask.filesCount != 0) {
                     if (childTask.maxSize.size > task->maxSize.size) {
                         task->maxSize = childTask.maxSize;
@@ -182,12 +198,14 @@ int main(int argc, char *argv[]) {
 
         while (wait(NULL) != -1);
 
-//        printf("max file : %s %lu\n", task->maxSize.name, task->maxSize.size);
-//        printf("min file : %s %lu\n", task->minSize.name, task->minSize.size);
-//        for (int i = 0; i < task->extensionsCount; ++i) {
-//            printf(".%s - %d\n", task->extensions[i].extension, task->extensions[i].count);
-//        }
-//        printf("directory size : %llu", task->dirSize);
+        pthread_mutex_destroy(&lock);
+
+        printf("max file : %s %lu\n", task->maxSize.name, task->maxSize.size);
+        printf("min file : %s %lu\n", task->minSize.name, task->minSize.size);
+        for (int i = 0; i < task->extensionsCount; ++i) {
+            printf(".%s - %d\n", task->extensions[i].extension, task->extensions[i].count);
+        }
+        printf("directory size : %llu", task->dirSize);
 
 
     } else if (argc > 2) {
