@@ -5,8 +5,8 @@ struct task {
     unsigned long long dirSize;
     struct iFile maxSize;
     struct iFile minSize;
-    struct iFile files[10];
     struct iDirectory directory[10];
+    struct iFile files[10];
     struct extensionCount extensions[10];
 };
 

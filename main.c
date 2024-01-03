@@ -96,9 +96,11 @@ void *threadFunction(void *arg) {
 
 
     initDirectoryTask(argument->threadTask, argument->path);
-//    printf("path : %s\n", argument->path);
+//
 
-    if (argument->threadTask->directoryCount == 0) return NULL;
+    if (argument->threadTask->directoryCount == 0 && argument->threadTask->filesCount == 0) {
+        pthread_exit(NULL);
+    };
 
     pthread_t tid[argument->threadTask->directoryCount];
     struct thread_arg threadArguments[argument->threadTask->directoryCount];
@@ -116,24 +118,50 @@ void *threadFunction(void *arg) {
     }
 
     pthread_mutex_lock(&lock);
-    if (argument->threadTask->filesCount != 0) {
+    if (strlen(argument->task->maxSize.name) != 0){
         if (argument->threadTask->maxSize.size > argument->task->maxSize.size) {
             argument->task->maxSize = argument->threadTask->maxSize;
         }
+    }else{
+        argument->task->maxSize = argument->threadTask->maxSize;
+    }
 
+    if (strlen(argument->task->minSize.name) != 0) {
         if (argument->threadTask->minSize.size < argument->task->minSize.size) {
             argument->task->minSize = argument->threadTask->minSize;
         }
-
-        for (int j = 0; j < argument->threadTask->extensionsCount; ++j) {
-            extensionTypesWithCount(argument->threadTask->extensions[j], argument->task);
-        }
-
-        argument->task->dirSize += argument->threadTask->dirSize;
+    } else {
+        argument->task->minSize = argument->threadTask->minSize;
     }
+
+
+    for (int j = 0; j < argument->threadTask->extensionsCount; ++j) {
+        extensionTypesWithCount(argument->threadTask->extensions[j], argument->task);
+    }
+
+    argument->task->dirSize += argument->threadTask->dirSize;
+
     pthread_mutex_unlock(&lock);
-    return NULL;
+    pthread_exit(NULL);
 }
+
+
+
+void printsize(size_t  size)
+{
+    static const char *SIZES[] = { "B", "kB", "MB", "GB" };
+    size_t div = 0;
+    size_t rem = 0;
+
+    while (size >= 1000 && div < (sizeof SIZES / sizeof *SIZES)) {
+        rem = (size % 1000);
+        div++;
+        size /= 1000;
+    }
+
+    printf("%.2f %s\n", (float)size + (float)rem / 1000.0, SIZES[div]);
+}
+
 
 int main(int argc, char *argv[]) {
     struct task *task = (struct task *) mmap(NULL, sizeof(struct task), PROT_READ | PROT_WRITE,
@@ -158,36 +186,47 @@ int main(int argc, char *argv[]) {
                 initDirectoryTask(&childTask, task->directory[i].path);
 
                 if (childTask.directoryCount != 0) {
+
                     pthread_t tid[childTask.directoryCount];
                     struct thread_arg threadArguments[childTask.directoryCount];
                     struct task threadTasks[childTask.directoryCount];
+
                     for (int j = 0; j < childTask.directoryCount; j++) {
                         threadArguments[j].path = childTask.directory[j].path;
                         threadArguments[j].task = &childTask;
                         threadArguments[j].threadTask = &threadTasks[j];
-                        pthread_create(&tid[j], NULL, threadFunction, (void*) &threadArguments[j]);
+                        pthread_create(&tid[j], NULL, threadFunction, (void *) &threadArguments[j]);
                     }
                     for (int j = 0; j < childTask.directoryCount; j++) {
                         pthread_join(tid[j], NULL);
                     }
 
                 }
-                printf("Child %d maxFile = %s\n", i, childTask.maxSize.name);
-                if (childTask.filesCount != 0) {
+//                printf("Child %d minSize = %s\n", i, childTask.minSize.path);
+//                if (childTask.filesCount != 0) {
+                if (strlen(childTask.maxSize.name) != 0){
                     if (childTask.maxSize.size > task->maxSize.size) {
                         task->maxSize = childTask.maxSize;
                     }
+                }else{
+                    task->maxSize = childTask.maxSize;
+                }
 
+                if (strlen(childTask.minSize.name) != 0){
                     if (childTask.minSize.size < task->minSize.size) {
                         task->minSize = childTask.minSize;
                     }
-
-                    for (int j = 0; j < childTask.extensionsCount; ++j) {
-                        extensionTypesWithCount(childTask.extensions[j], task);
-                    }
-
-                    task->dirSize += childTask.dirSize;
+                }else{
+                    task->minSize = childTask.minSize;
                 }
+
+
+                for (int j = 0; j < childTask.extensionsCount; ++j) {
+                    extensionTypesWithCount(childTask.extensions[j], task);
+                }
+
+                task->dirSize += childTask.dirSize;
+//                }
                 exit(0);
             } else if (pid > 0) {
 //                printf("Parent\n");
@@ -200,12 +239,17 @@ int main(int argc, char *argv[]) {
 
         pthread_mutex_destroy(&lock);
 
-        printf("max file : %s %lu\n", task->maxSize.name, task->maxSize.size);
-        printf("min file : %s %lu\n", task->minSize.name, task->minSize.size);
+        printf("max file : %s -- ", task->maxSize.name);
+        printsize(task->maxSize.size);
+        printf("min file : %s -- ", task->minSize.name);
+        printsize(task->minSize.size);
+
         for (int i = 0; i < task->extensionsCount; ++i) {
             printf(".%s - %d\n", task->extensions[i].extension, task->extensions[i].count);
         }
-        printf("directory size : %llu", task->dirSize);
+        printf("directory size : ");
+        printsize(task->dirSize);
+
 
 
     } else if (argc > 2) {
