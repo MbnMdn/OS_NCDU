@@ -7,7 +7,6 @@
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <pthread.h>
-
 #include "utilities.h"
 #include "arraylist.h"
 
@@ -147,7 +146,7 @@ void *threadFunction(void *arg) {
 
 
 
-void printsize(size_t  size)
+char* printsize(size_t  size)
 {
     static const char *SIZES[] = { "B", "kB", "MB", "GB" };
     size_t div = 0;
@@ -239,16 +238,30 @@ int main(int argc, char *argv[]) {
 
         pthread_mutex_destroy(&lock);
 
-        printf("max file : %s -- ", task->maxSize.name);
-        printsize(task->maxSize.size);
-        printf("min file : %s -- ", task->minSize.name);
-        printsize(task->minSize.size);
-
+        //printing the results:
+        int numOfFiles=0;
+        printf("Number of each file type:\n");
         for (int i = 0; i < task->extensionsCount; ++i) {
-            printf(".%s - %d\n", task->extensions[i].extension, task->extensions[i].count);
+            printf("- .%s: %d\n", task->extensions[i].extension, task->extensions[i].count);
+            numOfFiles += task->extensions[i].count;
         }
-        printf("directory size : ");
+        printf("Total Number of Files: %d\n", numOfFiles);
+        printf("\nFile with the largest size: %s, Size: ", task->maxSize.path);
+        printsize(task->maxSize.size);
+        printf("File with the smallest size: %s, Size: ", task->minSize.path);
+        printsize(task->minSize.size);
+        printf("\nSize of Root Folder: ");
         printsize(task->dirSize);
+
+
+
+
+
+
+
+
+
+
 
 
 
